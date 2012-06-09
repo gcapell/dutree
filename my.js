@@ -1,5 +1,10 @@
 $(document).ready(function() {
-	$("a").click(function(event) {
-		alert("Thanks for visiting!");
-	})
+	
+	$("#simpletree").jstree({
+		plugins : [ "themes", "html_data"],
+		core : {
+			animation: 0,
+		}
+	});
+	
 });
