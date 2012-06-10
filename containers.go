@@ -5,9 +5,15 @@ package main
 
 import (
 	"log"
+	"fmt"
 )
 
 type (
+	Storage interface {
+		Store(*Result)
+		Retrieve(NodeID) (Result, error)
+	}
+	mapStore map[NodeID]Result
 	TaskHeap struct {
 		// Slices of all tasks of a given level
 		task map[Level]([]*Task)
@@ -16,6 +22,19 @@ type (
 	}
 	WorkerSet []Worker
 )
+
+func(m mapStore) Store(r *Result) {
+	log.Println("store", r)
+	m[r.id] = *r
+}
+
+func(m mapStore) Retrieve(n NodeID) (Result, error) {
+	r,ok := m[n]
+	if !ok {
+		return r,  fmt.Errorf("%v not in store", n)
+	}
+	return r, nil
+}
 
 func NewTaskHeap() TaskHeap {
 	return TaskHeap{make(map[Level][]*Task), -1}

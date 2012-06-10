@@ -7,7 +7,7 @@ import (
 	"flag"
 	"log"
 	"os"
-	"fmt"
+	"sync"
 )
 
 var (
@@ -16,29 +16,38 @@ var (
 
 type (
 	Level int
+	NodeID uint64
 	Task  struct {
 		path  string
 		level Level
 		reply chan *Result
+		store Storage
 	}
 	Result struct {
 		path string
 		data int64
-		children []*Result
+		id NodeID
+		children []NodeID
 	}
 
 	// Worker represented as a channel that accepts tasks
 	Worker chan *Task
 )
 
-func (r *Result) show(level int) {
-	fmt.Printf("%*s %s %d\n", level*4, " ", r.path, r.data)
-	if r.children == nil {
-		return
-	}
-	for _,c := range r.children {
-		c.show(level+1)
-	}
+var (
+	maxNodeID NodeID
+	maxNodeIDLock sync.Mutex
+)
+
+func NewID() NodeID {
+	maxNodeIDLock.Lock()
+	defer maxNodeIDLock.Unlock()
+	maxNodeID+=1
+	return maxNodeID
+}
+
+func NewResult(path string, data int64, children []NodeID) *Result {
+	return &Result{path, data, NewID(), children}
 }
 
 func manager() Worker {
@@ -84,11 +93,44 @@ func worker(workerAvailable chan chan *Task, tasks chan *Task) {
 	}
 }
 
+
 func du(task *Task, queue chan *Task) {
 	result := du1(task, queue)
-	log.Println(result)
-	// store(result)
+	task.store.Store(result)
 	task.reply <- result
+}
+
+// Create new task to du du childPath, send result to reply
+func (t *Task) duChild(childPath string, reply chan *Result) *Task {
+	return &Task{
+		t.path + "/" + childPath,
+		t.level + 1,
+		reply,
+		t.store}
+}
+
+func du1(task *Task, queue chan *Task) *Result {
+	fileInfo, err := os.Stat(task.path)
+	if err != nil {
+		log.Fatal(err) // FIXME
+	}
+	// Simple file
+	if !fileInfo.IsDir() {
+		return NewResult(task.path, fileInfo.Size(), nil)
+	}
+	myChan := make(chan *Result)
+	childPaths := listDir(task.path)
+	for _, c := range childPaths {
+		queue <- task.duChild(c, myChan)
+	}
+	var myData int64
+	children := make([]NodeID, len(childPaths))
+	for j := range childPaths {
+		result := <-myChan
+		myData += result.data
+		children[j] = result.id
+	}
+	return NewResult(task.path, myData, children)
 }
 
 func listDir(path string) []string {
@@ -103,26 +145,3 @@ func listDir(path string) []string {
 	return names
 }
 
-func du1(task *Task, queue chan *Task) *Result {
-	fileInfo, err := os.Stat(task.path)
-	if err != nil {
-		log.Fatal(err) // FIXME
-	}
-	// Simple file
-	if !fileInfo.IsDir() {
-		return &Result{task.path, fileInfo.Size(), nil}
-	}
-	myChan := make(chan *Result)
-	childPaths := listDir(task.path)
-	for _, c := range childPaths {
-		queue <- &Task{task.path + "/" + c, task.level + 1, myChan}
-	}
-	var myData int64
-	children := make([]*Result, len(childPaths))
-	for j := range childPaths {
-		result := <-myChan
-		myData += result.data
-		children[j] = result
-	}
-	return &Result{task.path, myData, children}
-}

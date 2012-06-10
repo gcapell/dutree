@@ -40,10 +40,11 @@ func index(w http.ResponseWriter, r *http.Request) {
 func main() {
 	flag.Parse()
 	reply := make(chan *Result)
-	manager() <- &Task{flag.Arg(0), 0, reply}
+	var store mapStore = make(map[NodeID]Result)
+	manager() <- &Task{flag.Arg(0), 0,  reply, store}
 	data := <-reply
 	log.Printf("data: %v", data)
-	data.show(0)
+	log.Printf("store: %v", store)
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/tree", tree)
