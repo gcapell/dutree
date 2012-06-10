@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 )
 
 type (
@@ -17,7 +16,6 @@ type (
 )
 
 func (m mapStore) Store(r *Result) {
-	log.Println("store", r)
 	m[r.id] = *r
 }
 

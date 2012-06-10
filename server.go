@@ -71,16 +71,14 @@ func main() {
 	flag.Parse()
 	reply := make(chan *Result)
 	var store mapStore = make(map[NodeID]Result)
-	manager() <- &Task{flag.Arg(0), 0, reply, store}
+	go du(&Task{flag.Arg(0), 0, reply, store})
 	data := <-reply
-	log.Printf("data: %v", data)
-	log.Printf("store: %v", store)
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/tree", func(w http.ResponseWriter, r *http.Request) {
 		tree(w, r, store, data.id)
 	})
 	addr := ":8080"
-	log.Printf("Listening on", addr)
+	log.Println("Listening on", addr)
 	http.ListenAndServe(addr, nil)
 }

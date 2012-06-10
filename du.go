@@ -29,9 +29,6 @@ type (
 		id       NodeID
 		children []NodeID
 	}
-
-	// Worker represented as a channel that accepts tasks
-	Worker chan *Task
 )
 
 var (
@@ -50,51 +47,8 @@ func NewResult(path string, data int64, children []NodeID) *Result {
 	return &Result{path, data, NewID(), children}
 }
 
-func manager() Worker {
-	queue := make(chan *Task)
-	go manageQueues(queue)
-	return queue
-}
-
-func manageQueues(queue chan *Task) {
-	workerAvailable := make(chan (chan *Task))
-	tasks := NewTaskHeap()
-	var workers WorkerSet
-	for i := 0; i < *nWorkers; i++ {
-		go worker(workerAvailable, queue)
-	}
-
-	for {
-		select {
-		case w := <-workerAvailable:
-			t := tasks.pop()
-			if t != nil {
-				w <- t
-			} else {
-				workers.push(w)
-			}
-		case t := <-queue:
-			w := workers.pop()
-			if w != nil {
-				w <- t
-			} else {
-				tasks.push(t)
-			}
-		}
-	}
-
-}
-func worker(workerAvailable chan chan *Task, tasks chan *Task) {
-	myChan := make(chan *Task)
-	for {
-		workerAvailable <- myChan
-		task := <-myChan
-		du(task, tasks)
-	}
-}
-
-func du(task *Task, queue chan *Task) {
-	result := du1(task, queue)
+func du(task *Task) {
+	result := du1(task)
 	task.store.Store(result)
 	task.reply <- result
 }
@@ -108,19 +62,33 @@ func (t *Task) duChild(childPath string, reply chan *Result) *Task {
 		t.store}
 }
 
-func du1(task *Task, queue chan *Task) *Result {
-	fileInfo, err := os.Stat(task.path)
+func du1(task *Task) *Result {
+	f, err := os.Open(task.path)
 	if err != nil {
-		log.Fatal(err) // FIXME
+		log.Println("error", err)
+		return NewResult(task.path, 0, nil) // FIXME - indicate error
+	}
+	defer f.Close()
+	TICKETMASTER.getTicket(task.level)
+	fileInfo, err := f.Stat()
+	TICKETMASTER.returnTicket()
+	if err != nil {
+		log.Println("error", err)
+		return NewResult(task.path, 0, nil) // FIXME - indicate error
 	}
 	// Simple file
 	if !fileInfo.IsDir() {
 		return NewResult(task.path, fileInfo.Size(), nil)
 	}
 	myChan := make(chan *Result)
-	childPaths := listDir(task.path)
+	childPaths, err := f.Readdirnames(0)
+	f.Close()
+	if err != nil {
+		log.Println("error", err)
+		return NewResult(task.path, 0, nil) // FIXME - indicate error
+	}
 	for _, c := range childPaths {
-		queue <- task.duChild(c, myChan)
+		go du(task.duChild(c, myChan))
 	}
 	var myData int64
 	children := make([]NodeID, len(childPaths))
@@ -130,16 +98,4 @@ func du1(task *Task, queue chan *Task) *Result {
 		children[j] = result.id
 	}
 	return NewResult(task.path, myData, children)
-}
-
-func listDir(path string) []string {
-	f, err := os.Open(path)
-	if err != nil {
-		log.Fatal(err)
-	}
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return names
 }
