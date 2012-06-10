@@ -24,20 +24,37 @@ func tree(w http.ResponseWriter, r *http.Request, store Storage, root NodeID) {
 	log.Printf("TREE: %v => %s\n", r.URL, r.FormValue("id"))
 
 	id, err := strconv.ParseUint(r.FormValue("id"), 10, 64)
-	var nodeID NodeID
 	if err != nil {
-		nodeID = root
+		leaf(w, store, root)
 	} else {
-		nodeID = NodeID(id)
+		leaves(w, store, NodeID(id))
 	}
-	node, err := store.Retrieve(nodeID)
+}
+
+func leaf(w http.ResponseWriter, store Storage, n NodeID) {
+	val, err := store.Retrieve(n)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	node := Node {fmt.Sprintf("%s %d", val.path, val.data),"closed", Attr{val.id}}
 
-	children := make([]Node, len(node.children))
-	for j, c := range node.children {
+	b, err := json.Marshal(node)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(b)
+}
+
+func leaves(w http.ResponseWriter, store Storage, n NodeID) {
+	val, err := store.Retrieve(n)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	children := make([]Node, len(val.children))
+	for j, c := range val.children {
 		cval, err := store.Retrieve(c)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -59,7 +76,6 @@ func tree(w http.ResponseWriter, r *http.Request, store Storage, root NodeID) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("returning: %v\n", string(b))
 	w.Write(b)
 }
 
