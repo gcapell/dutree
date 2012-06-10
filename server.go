@@ -69,10 +69,8 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	flag.Parse()
-	reply := make(chan *Result)
 	var store mapStore = make(map[NodeID]Result)
-	go du(&Task{flag.Arg(0), 0, reply, store})
-	data := <-reply
+	data := du(flag.Arg(0), store)
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/tree", func(w http.ResponseWriter, r *http.Request) {
