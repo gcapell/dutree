@@ -15,18 +15,18 @@ var (
 )
 
 type (
-	Level int
+	Level  int
 	NodeID uint64
-	Task  struct {
+	Task   struct {
 		path  string
 		level Level
 		reply chan *Result
 		store Storage
 	}
 	Result struct {
-		path string
-		data int64
-		id NodeID
+		path     string
+		data     int64
+		id       NodeID
 		children []NodeID
 	}
 
@@ -35,14 +35,14 @@ type (
 )
 
 var (
-	maxNodeID NodeID
+	maxNodeID     NodeID
 	maxNodeIDLock sync.Mutex
 )
 
 func NewID() NodeID {
 	maxNodeIDLock.Lock()
 	defer maxNodeIDLock.Unlock()
-	maxNodeID+=1
+	maxNodeID += 1
 	return maxNodeID
 }
 
@@ -92,7 +92,6 @@ func worker(workerAvailable chan chan *Task, tasks chan *Task) {
 		du(task, tasks)
 	}
 }
-
 
 func du(task *Task, queue chan *Task) {
 	result := du1(task, queue)
@@ -144,4 +143,3 @@ func listDir(path string) []string {
 	}
 	return names
 }
-

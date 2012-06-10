@@ -1,27 +1,29 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"log"
 	"net/http"
-	"encoding/json"
 )
 
 type (
-	Attr struct {Id string `json:"id"`}
+	Attr struct {
+		Id string `json:"id"`
+	}
 	Node struct {
-		Data string `json:"data"`
+		Data  string `json:"data"`
 		State string `json:"state"`
-		Attr Attr `json:"attr"`
+		Attr  Attr   `json:"attr"`
 	}
 )
 
 func tree(w http.ResponseWriter, r *http.Request) {
 	log.Printf("TREE: %v\n", r.URL)
 
-	n := []Node {
-		{"c", "d",  Attr{"3"}},
-		{"a", "closed",  Attr{"1"}},
+	n := []Node{
+		{"c", "d", Attr{"3"}},
+		{"a", "closed", Attr{"1"}},
 	}
 
 	b, err := json.Marshal(n)
@@ -41,7 +43,7 @@ func main() {
 	flag.Parse()
 	reply := make(chan *Result)
 	var store mapStore = make(map[NodeID]Result)
-	manager() <- &Task{flag.Arg(0), 0,  reply, store}
+	manager() <- &Task{flag.Arg(0), 0, reply, store}
 	data := <-reply
 	log.Printf("data: %v", data)
 	log.Printf("store: %v", store)
