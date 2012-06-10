@@ -1,6 +1,3 @@
-// Copyright 2012 Google Inc.  All Rights Reserved.
-// Author: ook@google.com (Gary Capell)
-
 package main
 
 import (
