@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 )
 
@@ -13,10 +14,11 @@ type (
 	Attr struct {
 		Id NodeID `json:"id"`
 	}
-	Node struct {
+	DisplayNode struct {
 		Data  string `json:"data"`
 		State string `json:"state"`
 		Attr  Attr   `json:"attr"`
+		size  ByteSize
 	}
 )
 
@@ -37,7 +39,7 @@ func leaf(w http.ResponseWriter, store Storage, n NodeID) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	node := Node{fmt.Sprintf("%s %s", val.name, val.data), "closed", Attr{val.id}}
+	node := DisplayNode{fmt.Sprintf("%s %s", val.name, val.data), "closed", Attr{val.id}, val.data}
 
 	b, err := json.Marshal(node)
 	if err != nil {
@@ -53,7 +55,7 @@ func leaves(w http.ResponseWriter, store Storage, n NodeID) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	children := make([]Node, len(val.children))
+	children := make([]DisplayNode, len(val.children))
 	for j, c := range val.children {
 		cval, err := store.Retrieve(c)
 		if err != nil {
@@ -66,10 +68,15 @@ func leaves(w http.ResponseWriter, store Storage, n NodeID) {
 		} else {
 			state = "x"
 		}
-		children[j] = Node{
+		children[j] = DisplayNode{
 			fmt.Sprintf("%s %s", cval.name, cval.data),
-			state, Attr{cval.id}}
+			state, Attr{cval.id}, cval.data}
 	}
+
+	// Sort nodes by size
+	log.Println("before:", children)
+	sort.Sort(DisplayNodeSlice(children))
+	log.Println("after:", children)
 
 	b, err := json.Marshal(children)
 	if err != nil {
