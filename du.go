@@ -10,10 +10,10 @@ type (
 	Level  int
 	NodeID uint64
 	Result struct {
-		path, name    string
-		data     ByteSize
-		id       NodeID
-		children []NodeID
+		path, name string
+		data       ByteSize
+		id         NodeID
+		children   []NodeID
 	}
 )
 
@@ -64,7 +64,7 @@ func du1(path string, name string, store Storage) *Result {
 	var myData ByteSize
 	children := make([]NodeID, len(childPaths))
 	for j, c := range childPaths {
-		result := du(path + "/" + c, c, store)
+		result := du(path+"/"+c, c, store)
 		myData += result.data
 		children[j] = result.id
 	}
