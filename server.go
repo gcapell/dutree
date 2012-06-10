@@ -37,7 +37,7 @@ func leaf(w http.ResponseWriter, store Storage, n NodeID) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	node := Node {fmt.Sprintf("%s %d", val.name, val.data),"closed", Attr{val.id}}
+	node := Node{fmt.Sprintf("%s %s", val.name, val.data), "closed", Attr{val.id}}
 
 	b, err := json.Marshal(node)
 	if err != nil {
@@ -67,7 +67,7 @@ func leaves(w http.ResponseWriter, store Storage, n NodeID) {
 			state = "x"
 		}
 		children[j] = Node{
-			fmt.Sprintf("%s %d", cval.name, cval.data),
+			fmt.Sprintf("%s %s", cval.name, cval.data),
 			state, Attr{cval.id}}
 	}
 
