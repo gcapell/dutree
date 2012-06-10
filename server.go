@@ -23,8 +23,6 @@ type (
 )
 
 func tree(w http.ResponseWriter, r *http.Request, store Storage, root NodeID) {
-	log.Printf("TREE: %v => %s\n", r.URL, r.FormValue("id"))
-
 	id, err := strconv.ParseUint(r.FormValue("id"), 10, 64)
 	if err != nil {
 		leaf(w, store, root)
@@ -74,9 +72,7 @@ func leaves(w http.ResponseWriter, store Storage, n NodeID) {
 	}
 
 	// Sort nodes by size
-	log.Println("before:", children)
 	sort.Sort(DisplayNodeSlice(children))
-	log.Println("after:", children)
 
 	b, err := json.Marshal(children)
 	if err != nil {
